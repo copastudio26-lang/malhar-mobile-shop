@@ -1,16 +1,22 @@
 // --- MALHAR MOBILE SHOP CORE LOGIC ---
 
-// 1. SPLASH SCREEN TO AUTH SCREEN TRANSITION
+// 1. SPLASH SCREEN TO AUTH SCREEN TRANSITION (Fix)
 window.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         const splash = document.getElementById('splash-screen');
         const auth = document.getElementById('auth-screen');
-        if(splash) splash.style.opacity = '0';
-        setTimeout(() => {
-            if(splash) splash.classList.add('hidden');
-            if(auth) auth.classList.remove('hidden');
-        }, 800);
-    }, 3500);
+        
+        if (splash) {
+            splash.style.transition = "opacity 0.8s ease";
+            splash.style.opacity = '0';
+            setTimeout(() => {
+                splash.classList.add('hidden');
+                if (auth) {
+                    auth.classList.remove('hidden');
+                }
+            }, 800);
+        }
+    }, 3000); // 3 सेकंड तक स्पलैश स्क्रीन दिखेगी
 });
 
 // 2. TOGGLE BETWEEN LOGIN & SIGNUP FORMS
@@ -61,10 +67,10 @@ function sendOTP() {
         otp: generatedOTP
     };
 
-    // AJAY: Tumhari Real Service aur Template ID yahan fit kar di hai
+    // ⚠️ अपनी नई Service ID और Template ID यहाँ डालो (EmailJS को ठीक करने के बाद)
     emailjs.send('service_urv0pn9', 'template_o4wdx56', templateParams)
         .then(function(response) {
-            alert(`📩 Real OTP Sent Successfully to ${contact}!\nPlease check your inbox or spam folder.`);
+            alert(`📩 Real OTP Sent Successfully to ${contact}!\nPlease check your inbox.`);
             const otpField = document.getElementById('otp-input-field');
             if(otpField) otpField.classList.remove('hidden');
             if(otpBtn) {
@@ -72,12 +78,11 @@ function sendOTP() {
                 otpBtn.disabled = false;
             }
         }, function(error) {
-    nd OTP. Please check your Gmail Connection on EmailJS (Ensure permission checkmark is enabled).");
+            alert("❌ Failed to send OTP. Please check EmailJS settings.");
             if(otpBtn) {
                 otpBtn.innerText = "TRY AGAIN";
                 otpBtn.disabled = false;
             }
-            console.log('FAILED...', error);
         });
 }
 
@@ -90,7 +95,7 @@ document.getElementById('signup-form').addEventListener('submit', (e) => {
     const password = document.getElementById('reg-password').value;
 
     if (otp !== generatedOTP) {
-        alert("❌ Invalid OTP! Verification failed. Please check the code sent to your email.");
+        alert("❌ Invalid OTP! Please check the code sent to your email.");
         return;
     }
 
@@ -108,17 +113,19 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
     const user = document.getElementById('login-username').value;
     const pass = document.getElementById('login-password').value;
 
-    // Secret Admin Credentials for Malhar Mobile Shop
     if (user === "admin" && pass === "malhar@admin") {
         alert("👑 Welcome Admin! Opening Master Control Panel.");
         localStorage.setItem('current_role', 'admin');
         document.getElementById('auth-screen').classList.add('hidden');
         document.getElementById('dashboard-screen').classList.remove('hidden');
         
-        document.querySelector('.nav-links').innerHTML = `
-            <li onclick="loadSection('admin_orders')" class="active-nav"><i class="fas fa-list-alt"></i> All Customer Orders</li>
-            <li onclick="logout()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Log Out</li>
-        `;
+        const navLinks = document.querySelector('.nav-links');
+        if(navLinks) {
+            navLinks.innerHTML = `
+                <li onclick="loadSection('admin_orders')" class="active-nav"><i class="fas fa-list-alt"></i> All Customer Orders</li>
+                <li onclick="logout()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Log Out</li>
+            `;
+        }
         loadSection('admin_orders');
         return;
     }
@@ -132,13 +139,16 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
         document.getElementById('auth-screen').classList.add('hidden');
         document.getElementById('dashboard-screen').classList.remove('hidden');
         
-        document.querySelector('.nav-links').innerHTML = `
-            <li onclick="loadSection('home')" class="active-nav"><i class="fas fa-home"></i> Home</li>
-            <li onclick="loadSection('mobiles')"><i class="fas fa-mobile-alt"></i> Order Mobiles</li>
-            <li onclick="loadSection('profile')"><i class="fas fa-user"></i> My Profile</li>
-            <li onclick="loadSection('about')"><i class="fas fa-info-circle"></i> About Shop</li>
-            <li onclick="logout()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Log Out</li>
-        `;
+        const navLinks = document.querySelector('.nav-links');
+        if(navLinks) {
+            navLinks.innerHTML = `
+                <li onclick="loadSection('home')" class="active-nav"><i class="fas fa-home"></i> Home</li>
+                <li onclick="loadSection('mobiles')"><i class="fas fa-mobile-alt"></i> Order Mobiles</li>
+                <li onclick="loadSection('profile')"><i class="fas fa-user"></i> My Profile</li>
+                <li onclick="loadSection('about')"><i class="fas fa-info-circle"></i> About Shop</li>
+                <li onclick="logout()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Log Out</li>
+            `;
+        }
         loadSection('home');
     } else {
         alert("❌ Invalid Username or Password!");
@@ -199,7 +209,7 @@ const sections = {
     `,
     admin_orders: `
         <h2>📋 Live Customer Orders (Admin View)</h2>
-        <p style="color: var(--text-gray); margin-bottom: 20px;">Manage bookings and contact details for finance/EMI verification</p>
+        <p style="color: var(--text-gray); margin-bottom: 20px;">Manage bookings and contact details</p>
         <div class="neon-card" style="overflow-x: auto;">
             <table style="width: 100%; border-collapse: collapse; text-align: left; color: var(--text-white);">
                 <thead>
@@ -244,23 +254,17 @@ function loadSection(sectionName) {
     if(sidebar) sidebar.classList.remove('active');
 }
 
-// 7. ORDER BOOKING SYSTEM WITH ADMIN STORAGE
+// 7. ORDER BOOKING SYSTEM
 function bookItem(itemName) {
     const custName = localStorage.getItem('malhar_name') || "Walk-in Customer";
     const custContact = localStorage.getItem('malhar_user') || "Not Provided";
 
     let allOrders = JSON.parse(localStorage.getItem('malhar_master_orders')) || [];
-
-    const newOrder = {
-        name: custName,
-        contact: custContact,
-        product: itemName
-    };
-
+    const newOrder = { name: custName, contact: custContact, product: itemName };
     allOrders.push(newOrder);
     localStorage.setItem('malhar_master_orders', JSON.stringify(allOrders));
 
-    alert(`🎉 Success! Your booking request for ${itemName} has been securely submitted to the Admin Panel.`);
+    alert(`🎉 Success! Your booking request for ${itemName} has been submitted.`);
 }
 
 function renderAdminOrders() {
@@ -287,25 +291,19 @@ function renderAdminOrders() {
     });
 }
 
-function deleteOrder(index) {
-    let allOrders = JSON.parse(localStorage.getItem('malhar_master_orders')) || [];
-    allOrders.splice(index, 1);
-    localStorage.setItem('malhar_master_orders', JSON.stringify(allOrders));
-    renderAdminOrders();
-}
-
 // 8. SIDEBAR RESPONSIVE TOGGLE
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     if(sidebar) sidebar.classList.toggle('active');
 }
 
-// 9. LOGOUT SESSION KILLER
+// 9. LOGOUT
 function logout() {
-    if (confirm("Are you sure you want to log out from Malhar Mobile Shop?")) {
+    if (confirm("Are you sure you want to log out?")) {
         document.getElementById('dashboard-screen').classList.add('hidden');
         document.getElementById('auth-screen').classList.remove('hidden');
         document.getElementById('login-form').reset();
         localStorage.removeItem('current_role');
     }
-}
+        }
+            
