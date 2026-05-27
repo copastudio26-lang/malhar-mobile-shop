@@ -62,7 +62,7 @@ function sendOTP() {
     };
 
     // AJAY: Tumhari Real Service aur Template ID yahan fit kar di hai
-    emailjs.send('service_urv0pn9', 'template_o4wdx56', templateParams)
+    emailjs.send('service_iwf9j7a', 'template_1frvmnc', templateParams)
         .then(function(response) {
             alert(`📩 Real OTP Sent Successfully to ${contact}!\nPlease check your inbox or spam folder.`);
             const otpField = document.getElementById('otp-input-field');
