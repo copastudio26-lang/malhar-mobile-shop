@@ -1,4 +1,4 @@
-// --- MALHAR MOBILE SHOP CORE LOGIC ---
+Correct code// --- MALHAR MOBILE SHOP CORE LOGIC ---
 
 // 1. SPLASH SCREEN TO AUTH SCREEN TRANSITION (Fix)
 window.addEventListener('DOMContentLoaded', () => {
