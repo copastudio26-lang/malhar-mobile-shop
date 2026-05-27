@@ -5,13 +5,12 @@ window.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         const splash = document.getElementById('splash-screen');
         const auth = document.getElementById('auth-screen');
-        
-        splash.style.opacity = '0';
+        if(splash) splash.style.opacity = '0';
         setTimeout(() => {
-            splash.classList.add('hidden');
-            auth.classList.remove('hidden');
-        }, 800); // fade transition time
-    }, 3500); // 3.5 Sec Animation Duration
+            if(splash) splash.classList.add('hidden');
+            if(auth) auth.classList.remove('hidden');
+        }, 800);
+    }, 3500);
 });
 
 // 2. TOGGLE BETWEEN LOGIN & SIGNUP FORMS
@@ -23,33 +22,66 @@ function switchAuthMode(mode) {
     const btnSignup = document.getElementById('btn-signup');
 
     if (mode === 'signup') {
-        loginForm.classList.add('hidden');
-        signupForm.classList.remove('hidden');
-        authTitle.innerText = "CREATE ACCOUNT";
-        btnSignup.classList.add('active');
-        btnLogin.classList.remove('active');
+        if(loginForm) loginForm.classList.add('hidden');
+        if(signupForm) signupForm.classList.remove('hidden');
+        if(authTitle) authTitle.innerText = "CREATE ACCOUNT";
+        if(btnSignup) btnSignup.classList.add('active');
+        if(btnLogin) btnLogin.classList.remove('active');
     } else {
-        signupForm.classList.add('hidden');
-        loginForm.classList.remove('hidden');
-        authTitle.innerText = "WELCOME BACK";
-        btnLogin.classList.add('active');
-        btnSignup.classList.remove('active');
+        if(signupForm) signupForm.classList.add('hidden');
+        if(loginForm) loginForm.classList.remove('hidden');
+        if(authTitle) authTitle.innerText = "WELCOME BACK";
+        if(btnLogin) btnLogin.classList.add('active');
+        if(btnSignup) btnSignup.classList.remove('active');
     }
 }
 
-// 3. FAKE OTP SYSTEM LOGIC
+// 3. REAL OTP SYSTEM LOGIC (Using EmailJS)
+let generatedOTP = null;
+
 function sendOTP() {
     const contact = document.getElementById('reg-contact').value;
-    if (!contact) {
-        alert("⚠️ Please enter your Mobile or Email first!");
+    const otpBtn = document.getElementById('send-otp-btn');
+    
+    if (!contact || !contact.includes('@')) {
+        alert("⚠️ Please enter a valid Email Address to receive the OTP!");
         return;
     }
-    alert(`📥 OTP Sent Successfully to ${contact}!\n🔑 Verification Code is: 1234`);
-    document.getElementById('otp-input-field').classList.remove('hidden');
-    document.getElementById('send-otp-btn').innerText = "RESEND OTP";
+
+    // 4-digit random OTP generation
+    generatedOTP = Math.floor(1000 + Math.random() * 9000).toString();
+
+    if(otpBtn) {
+        otpBtn.innerText = "Sending...";
+        otpBtn.disabled = true;
+    }
+
+    const templateParams = {
+        to_email: contact,
+        otp: generatedOTP
+    };
+
+    // AJAY: Tumhari Real Service aur Template ID yahan fit kar di hai
+    emailjs.send('service_rsxuid6', 'template_ejb3mjg', templateParams)
+        .then(function(response) {
+            alert(`📩 Real OTP Sent Successfully to ${contact}!\nPlease check your inbox or spam folder.`);
+            const otpField = document.getElementById('otp-input-field');
+            if(otpField) otpField.classList.remove('hidden');
+            if(otpBtn) {
+                otpBtn.innerText = "RESEND OTP";
+                otpBtn.disabled = false;
+            }
+        }, function(error) {
+            alert("❌ Failed to send OTP. Please check your Gmail Connection on EmailJS (Ensure permission checkmark is enabled).");
+            if(otpBtn) {
+                otpBtn.innerText = "TRY AGAIN";
+                otpBtn.disabled = false;
+            }
+            console.log('FAILED...', error);
+        });
 }
 
-// 4. REGISTRATION (LOCALSTORAGE STORAGE)
+// 4. REGISTRATION WITH REAL OTP VERIFICATION
 document.getElementById('signup-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const name = document.getElementById('reg-name').value;
@@ -57,12 +89,11 @@ document.getElementById('signup-form').addEventListener('submit', (e) => {
     const otp = document.getElementById('reg-otp').value;
     const password = document.getElementById('reg-password').value;
 
-    if (otp !== "1234") {
-        alert("❌ Invalid OTP! Please check and type '1234'.");
+    if (otp !== generatedOTP) {
+        alert("❌ Invalid OTP! Verification failed. Please check the code sent to your email.");
         return;
     }
 
-    // Save Data Locally
     localStorage.setItem('malhar_user', contact);
     localStorage.setItem('malhar_pass', password);
     localStorage.setItem('malhar_name', name);
@@ -71,40 +102,64 @@ document.getElementById('signup-form').addEventListener('submit', (e) => {
     switchAuthMode('login');
 });
 
-// 5. LOGIN AUTHENTICATION
+// 5. LOGIN AUTHENTICATION (WITH ADMIN ACCOUNT)
 document.getElementById('login-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const user = document.getElementById('login-username').value;
     const pass = document.getElementById('login-password').value;
+
+    // Secret Admin Credentials for Malhar Mobile Shop
+    if (user === "admin" && pass === "malhar@admin") {
+        alert("👑 Welcome Admin! Opening Master Control Panel.");
+        localStorage.setItem('current_role', 'admin');
+        document.getElementById('auth-screen').classList.add('hidden');
+        document.getElementById('dashboard-screen').classList.remove('hidden');
+        
+        document.querySelector('.nav-links').innerHTML = `
+            <li onclick="loadSection('admin_orders')" class="active-nav"><i class="fas fa-list-alt"></i> All Customer Orders</li>
+            <li onclick="logout()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Log Out</li>
+        `;
+        loadSection('admin_orders');
+        return;
+    }
 
     const savedUser = localStorage.getItem('malhar_user');
     const savedPass = localStorage.getItem('malhar_pass');
 
     if (user === savedUser && pass === savedPass) {
         alert(`👋 Access Granted! Welcome to Malhar Dashboard.`);
+        localStorage.setItem('current_role', 'customer');
         document.getElementById('auth-screen').classList.add('hidden');
         document.getElementById('dashboard-screen').classList.remove('hidden');
-        loadSection('home'); // Load default homepage layout
+        
+        document.querySelector('.nav-links').innerHTML = `
+            <li onclick="loadSection('home')" class="active-nav"><i class="fas fa-home"></i> Home</li>
+            <li onclick="loadSection('mobiles')"><i class="fas fa-mobile-alt"></i> Order Mobiles</li>
+            <li onclick="loadSection('profile')"><i class="fas fa-user"></i> My Profile</li>
+            <li onclick="loadSection('about')"><i class="fas fa-info-circle"></i> About Shop</li>
+            <li onclick="logout()" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Log Out</li>
+        `;
+        loadSection('home');
     } else {
-        alert("❌ Invalid Username or Password! Please try again.");
+        alert("❌ Invalid Username or Password!");
     }
 });
 
-// 6. DYNAMIC DASHBOARD CONTENT SYSTEM (Single Page App Logic)
+// 6. DYNAMIC DASHBOARD CONTENT SYSTEM
 const sections = {
     home: `
         <h2>🚀 Our Premium Services</h2>
         <p style="color: var(--text-gray); margin-bottom: 20px;">Quality You Trust, Service You Deserve</p>
         <div class="grid-container">
-            <div class="neon-card"><h3>🔧 Mobile Repairing</h3><p>All types of smart phone hardware solutions. Display Replacement, Charging ports, and complete Water Damage recoveries.</p></div>
-            <div class="neon-card"><h3>💻 Software Solutions</h3><p>Fast software flashing, official OS updates, security patching, and boot loops resolutions.</p></div>
-            <div class="neon-card"><h3>⚡ Electronic Items</h3><p>High-end premium audio systems, LED TVs, wireless Neckbands, Earphones, and Smart Watches.</p></div>
-            <div class="neon-card"><h3>🏠 Home Appliances</h3><p>AC, Coolers, Smart Fridges, and fully-automatic Washing Machines available at the best price.</p></div>
+            <div class="neon-card"><h3>🛠️ Mobile Repairing</h3><p>All Types of Mobile Repair</p></div>
+            <div class="neon-card"><h3>💻 Software Solutions</h3><p>Software Update & Flashing</p></div>
+            <div class="neon-card"><h3>⚡ Electronic Items</h3><p>High Quality Accessories</p></div>
+            <div class="neon-card"><h3>🏠 Home Appliances</h3><p>AC, Cooler, Fridge, Washing Machine</p></div>
         </div>
     `,
     mobiles: `
         <h2>📱 Stock & Online Bookings</h2>
-        <p style="color: var(--text-gray); margin-bottom: 20px;">All major brands available: Apple, Samsung, Vivo, Oppo, Realme, Mi, OnePlus</p>
+        <p style="color: var(--text-gray); margin-bottom: 20px;">All major brands available with easy finance options</p>
         <div class="grid-container">
             <div class="neon-card">
                 <h3>iPhone 15 Pro Max</h3>
@@ -129,60 +184,128 @@ const sections = {
     profile: `
         <h2>👤 Active Session Details</h2>
         <div class="neon-card" style="margin-top: 20px; max-width: 500px;">
-            <p style="margin-bottom: 10px;"><strong>Customer Name:</strong> <span id="dash-cust-name" style="color: var(--gold);"></span></p>
-            <p style="margin-bottom: 10px;"><strong>Registered ID:</strong> <span id="dash-cust-user" style="color: var(--neon-blue);"></span></p>
-            <p><strong>Verification Rank:</strong> Premium Buyer Tier-1 ✔️</p>
+            <p style="margin-bottom: 10px;"><strong>Customer Name:</strong> <span id="dash-cust-name" style="color:var(--neon-blue);"></span></p>
+            <p style="margin-bottom: 10px;"><strong>Registered ID/Email:</strong> <span id="dash-cust-user" style="color:var(--gold);"></span></p>
+            <p><strong>Verification Rank:</strong> <span style="color:#00ff88;">Premium Buyer Tier</span></p>
         </div>
     `,
     about: `
-        <h2>ℹ️ Store Directory & Contact Information</h2>
+        <h2>🏪 Store Directory & Contact Information</h2>
         <div class="neon-card" style="margin-top: 20px;">
             <h3>👑 Managed By: Aditya Madavi</h3>
-            <p style="margin-top: 10px;"><i class="fas fa-phone-alt" style="color: var(--neon-blue);"></i> Call: 8788461756</p>
-            <p><i class="fab fa-whatsapp" style="color: #25d366;"></i> WhatsApp Business: 9112390404</p>
+            <p style="margin-top: 10px;"><i class="fas fa-phone-alt"></i> +91 8788461756</p>
+            <p><i class="fab fa-whatsapp" style="color: #25d366;"></i> +91 9112390404</p>
         </div>
-        <div class="neon-card" style="margin-top: 20px;">
-            <h3>⭐ Shop Benefits</h3>
-            <p>✔ 100% Customer Satisfaction Guaranteed</p>
-            <p>✔ Quick Document Approval with instant EMI choices</p>
-            <p>✔ Best Quality Repairs with original components</p>
+    `,
+    admin_orders: `
+        <h2>📋 Live Customer Orders (Admin View)</h2>
+        <p style="color: var(--text-gray); margin-bottom: 20px;">Manage bookings and contact details for finance/EMI verification</p>
+        <div class="neon-card" style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; color: var(--text-white);">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--neon-blue); color: var(--gold);">
+                        <th style="padding: 12px;">Customer Name</th>
+                        <th style="padding: 12px;">Email ID</th>
+                        <th style="padding: 12px;">Product Booked</th>
+                        <th style="padding: 12px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-orders-table">
+                    </tbody>
+            </table>
         </div>
     `
 };
 
 function loadSection(sectionName) {
     const mainArea = document.getElementById('main-content');
-    mainArea.innerHTML = sections[sectionName];
+    if(mainArea) mainArea.innerHTML = sections[sectionName];
 
-    // UI Link Active Effect Toggle
     const links = document.querySelectorAll('.nav-links li');
     links.forEach(link => link.classList.remove('active-nav'));
+    
+    links.forEach(link => {
+        if(link.getAttribute('onclick') && link.getAttribute('onclick').includes(sectionName)) {
+            link.classList.add('active-nav');
+        }
+    });
 
-    // Inject active user credentials on profile section load
     if (sectionName === 'profile') {
-        document.getElementById('dash-cust-name').innerText = localStorage.getItem('malhar_name') || "Guest";
-        document.getElementById('dash-cust-user').innerText = localStorage.getItem('malhar_user') || "Unknown";
+        const dName = document.getElementById('dash-cust-name');
+        const dUser = document.getElementById('dash-cust-user');
+        if(dName) dName.innerText = localStorage.getItem('malhar_name') || "N/A";
+        if(dUser) dUser.innerText = localStorage.getItem('malhar_user') || "N/A";
     }
 
-    // Handle Responsive Menu Auto Close on Click
-    document.getElementById('sidebar').classList.remove('active');
+    if (sectionName === 'admin_orders') {
+        renderAdminOrders();
+    }
+    const sidebar = document.getElementById('sidebar');
+    if(sidebar) sidebar.classList.remove('active');
 }
 
-// 7. ORDER BOOKING INTERACTION
-function bookItem(name) {
-    alert(`🎉 Booking Request Logged for ${name}!\nOur support executive (Aditya Madavi) will process your EMI/Finance profile under 2 hours.`);
+// 7. ORDER BOOKING SYSTEM WITH ADMIN STORAGE
+function bookItem(itemName) {
+    const custName = localStorage.getItem('malhar_name') || "Walk-in Customer";
+    const custContact = localStorage.getItem('malhar_user') || "Not Provided";
+
+    let allOrders = JSON.parse(localStorage.getItem('malhar_master_orders')) || [];
+
+    const newOrder = {
+        name: custName,
+        contact: custContact,
+        product: itemName
+    };
+
+    allOrders.push(newOrder);
+    localStorage.setItem('malhar_master_orders', JSON.stringify(allOrders));
+
+    alert(`🎉 Success! Your booking request for ${itemName} has been securely submitted to the Admin Panel.`);
+}
+
+function renderAdminOrders() {
+    const tableBody = document.getElementById('admin-orders-table');
+    if (!tableBody) return;
+
+    let allOrders = JSON.parse(localStorage.getItem('malhar_master_orders')) || [];
+
+    if (allOrders.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="4" style="padding: 20px; text-align: center; color: var(--text-gray);">No orders received yet. 📭</td></tr>`;
+        return;
+    }
+
+    tableBody.innerHTML = "";
+    allOrders.forEach((order, index) => {
+        tableBody.innerHTML += `
+            <tr style="border-bottom: 1px solid var(--glass-border);">
+                <td style="padding: 12px;">${order.name}</td>
+                <td style="padding: 12px; color: var(--neon-blue);">${order.contact}</td>
+                <td style="padding: 12px; color: var(--gold);">${order.product}</td>
+                <td style="padding: 12px;"><button onclick="deleteOrder(${index})" style="background:#ff4d4d; border:none; color:white; padding:5px 10px; cursor:pointer; border-radius:4px;">Complete</button></td>
+            </tr>
+        `;
+    });
+}
+
+function deleteOrder(index) {
+    let allOrders = JSON.parse(localStorage.getItem('malhar_master_orders')) || [];
+    allOrders.splice(index, 1);
+    localStorage.setItem('malhar_master_orders', JSON.stringify(allOrders));
+    renderAdminOrders();
 }
 
 // 8. SIDEBAR RESPONSIVE TOGGLE
 function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('active');
+    const sidebar = document.getElementById('sidebar');
+    if(sidebar) sidebar.classList.toggle('active');
 }
 
 // 9. LOGOUT SESSION KILLER
 function logout() {
-    if (confirm("Are you sure you want to log out from Malhar Mobile Panel?")) {
+    if (confirm("Are you sure you want to log out from Malhar Mobile Shop?")) {
         document.getElementById('dashboard-screen').classList.add('hidden');
         document.getElementById('auth-screen').classList.remove('hidden');
         document.getElementById('login-form').reset();
+        localStorage.removeItem('current_role');
     }
 }
